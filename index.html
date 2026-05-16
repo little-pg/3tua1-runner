@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title> 3-TUA-1 RUNNER</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
   @import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&display=swap');
@@ -276,7 +277,7 @@
   .overlay-score { font-size: clamp(12px, 3vw, 20px); color: #fef08a; text-shadow: 2px 2px 0 #3b0764; margin: 8px 0; }
 
   /* LEADERBOARD */
-  .sidebar { display: flex; flex-direction: column; gap: 10px; }
+  .sidebar { display: flex; flex-direction: column; gap: 10px; align-self: stretch; }
 
   .leaderboard-list { padding: 8px; }
   .lb-row {
@@ -693,11 +694,11 @@
           <div class="particles" id="particlesArea"></div>
 
           <!-- Start Overlay -->
-          <div class="overlay" id="startOverlay">
+          <div class="overlay" id="startOverlay" style="pointer-events:none">
             <div class="overlay-title" id="startTitle">Are you ready?</div>
             <div class="overlay-sub">CHOOSE YOUR CHARACTER TO START</div>
             <div class="pixel-divider" style="width:120px;margin:8px auto"></div>
-            <div class="overlay-sub" style="font-size:6px;animation:blink 0.8s infinite">▶ TAP / SPACE TO START ◀</div>
+            <button id="startBtn" onclick="jump()" style="pointer-events:auto;margin-top:4px;font-family:'Press Start 2P',monospace;font-size:8px;background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;border:3px solid #5b21b6;border-bottom:5px solid #3b0764;padding:10px 18px;cursor:pointer;letter-spacing:1px;box-shadow:0 4px 0 #3b0764;transition:transform 0.1s" onmousedown="this.style.transform='translateY(3px)';this.style.boxShadow='none'" onmouseup="this.style.transform='';this.style.boxShadow='0 4px 0 #3b0764'">▶ CLICK HERE TO PLAY</button>
           </div>
 
           <!-- Game Over Overlay -->
@@ -736,7 +737,7 @@
         <!-- Controls Info -->
         <div class="controls">
           <span class="ctrl-key">SPACE</span> JUMP &nbsp;·&nbsp;
-          <span class="ctrl-key">↓</span> SQUAT  &nbsp;·&nbsp;
+          <span class="ctrl-key">↓</span> DUCK &nbsp;·&nbsp;
           <span class="ctrl-key">TAP</span> JUMP (MOBILE)
         </div>
       </div>
@@ -759,16 +760,16 @@
       </div>
 
       <!-- Leaderboard -->
-      <div class="pixel-box" style="flex:1">
+      <div class="pixel-box" style="flex:1;display:flex;flex-direction:column">
         <div class="box-title">
           🏆 LEADERBOARD
           <span class="live-badge">● LIVE</span>
         </div>
-        <div class="leaderboard-list" id="leaderboard">
+        <div class="leaderboard-list" id="leaderboard" style="flex:1">
           <div class="lb-empty">LOADING...</div>
         </div>
         <div style="padding:6px">
-          <button class="pixel-btn small danger-btn" onclick="clearMyScore()">🗑 RESET MY SCORE</button>
+          <button class="pixel-btn small danger-btn" onclick="clearMyScore()" style="width:100%">🗑 RESET MY SCORE</button>
         </div>
       </div>
     </div>
@@ -783,7 +784,7 @@
     <div class="summary-header">
       <div>
         <div class="summary-header-title">GAME OVER</div>
-        <div style="font-family:'Pixelify Sans',monospace;font-size:13px;color:#fce7f3;margin-top:4px;letter-spacing:0.5px"> TRY AGAIN NA KHUN YAI 🐾</div>
+        <div style="font-family:'Pixelify Sans',monospace;font-size:13px;color:#fce7f3;margin-top:4px;letter-spacing:0.5px">ลองใหม่นะจ๊ะ ยายจ๋า 🐾</div>
         <div class="summary-header-sub" id="summaryPlayer">PLAYER01</div>
       </div>
       <div style="font-size:18px;cursor:pointer;user-select:none;transition:transform 0.1s" id="summaryCharEmoji" onclick="closeSummary()" title="Close" onmouseenter="this.style.transform='scale(1.2)'" onmouseleave="this.style.transform='scale(1)'">🦕</div>
@@ -855,7 +856,7 @@
       </div>
       <div class="summary-actions">
         <button class="summary-btn btn-play" onclick="closeSummaryAndPlay()">▶ PLAY AGAIN</button>
-        <button class="summary-btn btn-close" onclick="shareViaX()" style="border-color:#1d9bf0;color:#1d9bf0">𝕏 Share to X</button>
+        <button class="summary-btn btn-close" onclick="saveAsImage()" style="border-color:#7c3aed;color:#7c3aed" id="saveImgBtn">📷 SAVE IMAGE</button>
       </div>
     </div>
   </div>
@@ -1078,6 +1079,7 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let W, H;
 let score = 0, hiScore = parseInt(localStorage.getItem('dino_hi')||'0');
+let lastScore = 0; // เก็บคะแนนรอบล่าสุดก่อน reset
 let speed = 3, frameCount = 0, animFrame = 0;
 let rafId;
 
@@ -1195,15 +1197,18 @@ function gameOver() {
   gameState = 'dead';
   cancelAnimationFrame(rafId);
   unlockCharSelect();
+  lastScore = score; // ← freeze คะแนนรอบนี้ไว้ก่อน
 
   const isNew = score > hiScore;
   if (score > hiScore) { hiScore = score; localStorage.setItem('dino_hi', hiScore); }
   updateHi();
 
-  // Show in-canvas overlay immediately
+  // Show in-canvas overlay immediately — ล็อกไม่ให้กดระหว่างบันทึก
   document.getElementById('finalScore').textContent = String(score).padStart(5,'0');
   document.getElementById('newRecordBadge').style.display = isNew ? 'block' : 'none';
-  document.getElementById('gameOverOverlay').style.display = 'flex';
+  const gov = document.getElementById('gameOverOverlay');
+  gov.style.display = 'flex';
+  gov.style.pointerEvents = 'none'; // ← ปิดการกดชั่วคราว
 
   showStatus('SAVING...', true);
 
@@ -1211,14 +1216,23 @@ function gameOver() {
   saveScore(playerName, score, selectedChar).then(scores => {
     renderLeaderboard(scores);
     showStatus('SCORE SAVED!', true);
-    setTimeout(() => showSummary(scores, isNew), 800);
+    setTimeout(() => {
+      gov.style.pointerEvents = 'auto';
+      showSummary(scores, isNew);
+    }, 800);
+  }).catch(() => {
+    showStatus('OFFLINE — SCORE NOT SAVED', false);
+    setTimeout(() => {
+      gov.style.pointerEvents = 'auto';
+      showSummary([], isNew);
+    }, 800);
   });
 }
 
 function showSummary(scores, isNew) {
   const meta = CHAR_META[selectedChar];
   const livesLost = 3 - player.lives;
-  const maxSpd = (5 + score * 0.004).toFixed(1);
+  const maxSpd = (5 + lastScore * 0.004).toFixed(1);
 
   // Header
   document.getElementById('summaryPlayer').textContent = playerName;
@@ -1234,7 +1248,7 @@ function showSummary(scores, isNew) {
   pc.src = CHARS[selectedChar].standSrc;
 
   // Scores
-  document.getElementById('summaryScore').textContent = String(score).padStart(5,'0');
+  document.getElementById('summaryScore').textContent = String(lastScore).padStart(5,'0');
   document.getElementById('summaryScoreVsHi').textContent = isNew ? '★ NEW RECORD!' : 'HI: '+String(hiScore).padStart(5,'0');
 
   // Rank
@@ -1248,7 +1262,7 @@ function showSummary(scores, isNew) {
   document.getElementById('summaryLivesComment').textContent = livesLost===0?'FLAWLESS!':livesLost===1?'CLOSE CALL!':livesLost===2?'STAY SHARP!':'BRUTAL RUN!';
 
   // Rating bars (animate after mount)
-  const scoreP = Math.min(100, Math.round(score/20));
+  const scoreP = Math.min(100, Math.round(lastScore/20));
   const speedP = Math.min(100, Math.round((parseFloat(maxSpd)-5)/10*100));
   const survivP = Math.min(100, Math.round((1-livesLost/3)*100));
 
@@ -1262,7 +1276,7 @@ function showSummary(scores, isNew) {
   }, 200);
 
   // Grade
-  const gd = GRADE_DATA.find(g=>score>=g.min) || GRADE_DATA[GRADE_DATA.length-1];
+  const gd = GRADE_DATA.find(g=>lastScore>=g.min) || GRADE_DATA[GRADE_DATA.length-1];
   const gradeEl = document.getElementById('summaryGrade');
   gradeEl.textContent = gd.grade;
   gradeEl.style.color = gd.color;
@@ -1292,12 +1306,29 @@ function closeSummaryAndPlay() {
   drawIdle();
 }
 
-function shareViaX() {
-  const meta = CHAR_META[selectedChar];
-  const gd = GRADE_DATA.find(g=>score>=g.min) || GRADE_DATA[GRADE_DATA.length-1];
-  const text = `🎮 3-TUA-1 RUNNER\n👤 ${playerName} · ${meta.name} (${meta.cls})\n🏆 SCORE: ${String(score).padStart(5,'0')} · GRADE: ${gd.grade}\n⚡ Can you beat me? Play now!`;
-  const url = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
-  window.open(url, '_blank');
+function saveAsImage() {
+  const btn = document.getElementById('saveImgBtn');
+  btn.textContent = '⏳ SAVING...';
+  btn.disabled = true;
+
+  const card = document.querySelector('.summary-card');
+  html2canvas(card, {
+    backgroundColor: null,
+    scale: 2,
+    useCORS: true,
+    allowTaint: true,
+    logging: false,
+  }).then(canvas => {
+    const link = document.createElement('a');
+    link.download = `3tua1-${playerName}-${String(lastScore).padStart(5,'0')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    btn.textContent = '✅ SAVED!';
+    setTimeout(() => { btn.textContent = '📷 SAVE IMAGE'; btn.disabled = false; }, 2000);
+  }).catch(() => {
+    btn.textContent = '❌ ERROR';
+    btn.disabled = false;
+  });
 }
 
 function updateLives() {
@@ -1492,7 +1523,7 @@ function loop() {
   // Score
   score++;
   speed = 3 + score * 0.002;
-  if (score > hiScore) hiScore = score;
+  if (score > hiScore) { hiScore = score; localStorage.setItem('dino_hi', hiScore); }
 
   // Update displays
   if (frameCount % 3 === 0) {
@@ -1605,7 +1636,6 @@ document.addEventListener('keyup', e => {
 let touchStartY = 0;
 document.getElementById('gameCanvas').addEventListener('touchstart', e => { e.preventDefault(); touchStartY=e.touches[0].clientY; jump(); }, {passive:false});
 document.getElementById('gameCanvas').addEventListener('touchend', e => { e.preventDefault(); }, {passive:false});
-document.getElementById('startOverlay').addEventListener('touchstart', e => { e.preventDefault(); jump(); }, {passive:false});
 document.getElementById('gameOverOverlay').addEventListener('touchstart', e => { e.preventDefault(); jump(); }, {passive:false});
 document.getElementById('jumpBtn').addEventListener('touchstart', e => { e.preventDefault(); jump(); }, {passive:false});
 document.getElementById('duckBtn').addEventListener('touchstart', e => { e.preventDefault(); duck(true); }, {passive:false});
@@ -1618,9 +1648,8 @@ document.querySelectorAll('.char-btn').forEach(btn => {
   });
 });
 
-// Click on canvas
-document.getElementById('gameCanvas').addEventListener('click', () => jump());
-document.getElementById('startOverlay').addEventListener('click', () => jump());
+// Click on canvas — ไม่ให้เริ่มเกมจากการกด canvas ตรงๆ ต้องกดปุ่มเท่านั้น
+document.getElementById('gameCanvas').addEventListener('click', () => { if (gameState === 'playing') jump(); });
 document.getElementById('gameOverOverlay').addEventListener('click', () => jump());
 
 // Init hi score
