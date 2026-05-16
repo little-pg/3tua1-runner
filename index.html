@@ -52,14 +52,7 @@
     touch-action: manipulation;
   }
 
-  body::before {
-    content: '';
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(124,58,237,0.03) 3px, rgba(124,58,237,0.03) 4px);
-    pointer-events: none;
-    z-index: 9999;
-  }
+  /* body::before scanline removed - was causing purple dot artifact */
 
   .stars {
     position: fixed;
@@ -700,10 +693,10 @@
 
           <!-- Start Overlay -->
           <div class="overlay" id="startOverlay">
-            <div class="overlay-title">READY PLAYER ONE?</div>
-            <div class="overlay-sub"> CHOOSE CHARACTER TO START</div>
+            <div class="overlay-title" id="startTitle">READY PLAYER ONE?</div>
+            <div class="overlay-sub">CHOOSE CHARACTER TO START</div>
             <div class="pixel-divider" style="width:120px;margin:8px auto"></div>
-            <div class="overlay-sub" style="font-size:6px">SPACE / TAP </div>
+            <div class="overlay-sub" style="font-size:6px;animation:blink 0.8s infinite">▶ TAP / SPACE TO START ◀</div>
           </div>
 
           <!-- Game Over Overlay -->
@@ -790,7 +783,7 @@
         <div class="summary-header-title">GAME OVER</div>
         <div class="summary-header-sub" id="summaryPlayer">PLAYER01</div>
       </div>
-      <div style="font-size:18px" id="summaryCharEmoji">🦕</div>
+      <div style="font-size:18px;cursor:pointer;user-select:none;transition:transform 0.1s" id="summaryCharEmoji" onclick="closeSummary()" title="Close" onmouseenter="this.style.transform='scale(1.2)'" onmouseleave="this.style.transform='scale(1)'">🦕</div>
     </div>
     <div class="summary-body">
       <div class="new-record-banner" id="summaryRecord">★ NEW PERSONAL RECORD! ★</div>
@@ -859,7 +852,7 @@
       </div>
       <div class="summary-actions">
         <button class="summary-btn btn-play" onclick="closeSummaryAndPlay()">▶ PLAY AGAIN</button>
-        <button class="summary-btn btn-close" onclick="closeSummary()">✕ CLOSE</button>
+        <button class="summary-btn btn-close" onclick="shareViaX()" style="border-color:#1d9bf0;color:#1d9bf0">𝕏 SHARE VIA X</button>
       </div>
     </div>
   </div>
@@ -1082,7 +1075,7 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let W, H;
 let score = 0, hiScore = parseInt(localStorage.getItem('dino_hi')||'0');
-let speed = 5, frameCount = 0, animFrame = 0;
+let speed = 3, frameCount = 0, animFrame = 0;
 let rafId;
 
 const GROUND_H = 35;
@@ -1106,7 +1099,7 @@ resize();
 window.addEventListener('resize', () => { resize(); });
 
 function resetGame() {
-  score = 0; speed = 5; frameCount = 0; animFrame = 0;
+  score = 0; speed = 3; frameCount = 0; animFrame = 0;
   obstacles = []; clouds = []; particles_arr = [];
   spawnTimer = 0; spawnInterval = 80;
   player.y = H - GROUND_H - PLAYER_H;
@@ -1138,6 +1131,8 @@ function startGame() {
   gameState = 'playing';
   document.getElementById('startOverlay').style.display = 'none';
   document.getElementById('gameOverOverlay').style.display = 'none';
+  // Reset overlay title for next time
+  document.getElementById('startTitle').textContent = 'READY PLAYER ONE?';
   lockCharSelect();
   resetGame();
   loop();
@@ -1281,7 +1276,22 @@ function closeSummary() {
 function closeSummaryAndPlay() {
   closeSummary();
   document.getElementById('gameOverOverlay').style.display = 'none';
-  respawnGame();
+  // Update title for replay
+  document.getElementById('startTitle').textContent = 'PLAY AGAIN?';
+  // Show "Tap to Start" overlay instead of starting immediately
+  document.getElementById('startOverlay').style.display = 'flex';
+  gameState = 'idle';
+  unlockCharSelect();
+  // Draw idle screen while waiting
+  drawIdle();
+}
+
+function shareViaX() {
+  const meta = CHAR_META[selectedChar];
+  const gd = GRADE_DATA.find(g=>score>=g.min) || GRADE_DATA[GRADE_DATA.length-1];
+  const text = `🎮 3-TUA-1 RUNNER\n👤 ${playerName} · ${meta.name} (${meta.cls})\n🏆 SCORE: ${String(score).padStart(5,'0')} · GRADE: ${gd.grade}\n⚡ Can you beat me? Play now!`;
+  const url = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
+  window.open(url, '_blank');
 }
 
 function updateLives() {
@@ -1363,9 +1373,6 @@ function drawPlayer() {
     ctx.fillRect(px, drawY, drawW, drawH);
   }
 
-  // shadow on ground
-  ctx.fillStyle = 'rgba(0,0,0,0.18)';
-  ctx.fillRect(px+4, H-GROUND_H-4, PLAYER_W-8, 4);
 }
 
 function drawObstacle(o) {
@@ -1432,17 +1439,11 @@ function drawBg() {
   ctx.fillRect(0,0,W,H-GROUND_H);
 }
 
-// Stars in game
+// Stars removed - was causing purple dot artifacts in sky
 const gameStars = [];
-for (let i=0;i<30;i++) gameStars.push({x:Math.random(),y:Math.random()*0.7,b:Math.random()});
 
 function drawGameStars() {
-  // Pastel sparkles in sky
-  gameStars.forEach(s => {
-    const alpha = 0.1 + s.b * 0.2 * (Math.sin(frameCount*0.03+s.x*10)*0.5+0.5);
-    ctx.fillStyle = `rgba(167,139,250,${alpha})`;
-    ctx.fillRect(s.x*W, s.y*(H-GROUND_H), 4, 2);
-  });
+  // disabled - clean sky
 }
 
 function checkCollision() {
@@ -1484,7 +1485,7 @@ function loop() {
 
   // Score
   score++;
-  speed = 5 + score * 0.004;
+  speed = 3 + score * 0.002;
   if (score > hiScore) hiScore = score;
 
   // Update displays
