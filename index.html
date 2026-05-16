@@ -6,6 +6,7 @@
 <title> 3-TUA-1 RUNNER</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&display=swap');
 
   :root {
     --bg: #e8d5f5;
@@ -705,6 +706,7 @@
             <div class="overlay-sub">FINAL SCORE</div>
             <div class="overlay-score" id="finalScore">00000</div>
             <div id="newRecordBadge" style="display:none;font-size:8px;color:var(--gold);margin-bottom:8px;animation:blink 0.5s infinite">★ NEW RECORD! ★</div>
+            <div style="font-family:'Pixelify Sans',monospace;font-size:15px;color:#fce7f3;text-shadow:2px 2px 0 #3b0764;margin:6px 0 4px;letter-spacing:1px;animation:blink 1.4s infinite">ลองใหม่นะจ๊ะ ยายจ๋า 🐾</div>
             <div class="overlay-sub" style="font-size:6px;margin-top:4px">SPACE / TAP </div>
           </div>
         </div>
@@ -734,7 +736,7 @@
         <!-- Controls Info -->
         <div class="controls">
           <span class="ctrl-key">SPACE</span> JUMP &nbsp;·&nbsp;
-          <span class="ctrl-key">↓</span> SQUAT &nbsp;·&nbsp;
+          <span class="ctrl-key">↓</span> SQUAT  &nbsp;·&nbsp;
           <span class="ctrl-key">TAP</span> JUMP (MOBILE)
         </div>
       </div>
@@ -781,6 +783,7 @@
     <div class="summary-header">
       <div>
         <div class="summary-header-title">GAME OVER</div>
+        <div style="font-family:'Pixelify Sans',monospace;font-size:13px;color:#fce7f3;margin-top:4px;letter-spacing:0.5px"> TRY AGAIN NA KHUN YAI 🐾</div>
         <div class="summary-header-sub" id="summaryPlayer">PLAYER01</div>
       </div>
       <div style="font-size:18px;cursor:pointer;user-select:none;transition:transform 0.1s" id="summaryCharEmoji" onclick="closeSummary()" title="Close" onmouseenter="this.style.transform='scale(1.2)'" onmouseleave="this.style.transform='scale(1)'">🦕</div>
@@ -1112,6 +1115,8 @@ function jump() {
   if (document.activeElement && document.activeElement !== document.getElementById('gameCanvas')) {
     document.activeElement.blur();
   }
+  // ถ้า summary modal เปิดอยู่ ไม่ให้ jump/respawn
+  if (document.getElementById('summaryBackdrop').classList.contains('show')) return;
   if (gameState === 'idle') { startGame(); return; }
   if (gameState === 'dead') { respawnGame(); return; }
   if (player.jumpCount < 2) {
@@ -1139,6 +1144,7 @@ function startGame() {
 }
 
 function respawnGame() {
+  closeSummary();
   gameState = 'playing';
   document.getElementById('gameOverOverlay').style.display = 'none';
   lockCharSelect();
@@ -1581,11 +1587,17 @@ function drawIdle() {
 drawIdle();
 
 // --- INPUT ---------------------------------------------
+function isTyping() {
+  const t = document.activeElement && document.activeElement.tagName;
+  return t === 'INPUT' || t === 'TEXTAREA';
+}
 document.addEventListener('keydown', e => {
+  if (isTyping()) return;
   if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') { e.preventDefault(); jump(); }
   if (e.code === 'ArrowDown' || e.code === 'KeyS') { e.preventDefault(); duck(true); }
 });
 document.addEventListener('keyup', e => {
+  if (isTyping()) return;
   if (e.code === 'ArrowDown' || e.code === 'KeyS') duck(false);
 });
 
